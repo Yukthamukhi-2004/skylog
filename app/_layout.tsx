@@ -1,24 +1,47 @@
-import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
-import { Stack } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
-import 'react-native-reanimated';
+import { ClerkLoaded, ClerkProvider } from "@clerk/expo";
+import { Slot } from "expo-router";
+import * as SecureStore from "expo-secure-store";
+import "../global.css";
 
-import { useColorScheme } from '@/hooks/use-color-scheme';
-
-export const unstable_settings = {
-  anchor: '(tabs)',
+const tokenCache = {
+  async getToken(key: string) {
+    try {
+      const item = await SecureStore.getItemAsync(key);
+      return item;
+    } catch (error) {
+      console.error('Failed to read token from secure store:', error);
+      // Only delete if the token is corrupted, not on transient errors
+      try {
+        await SecureStore.deleteItemAsync(key);
+      } catch (deleteError) {
+        console.error('Failed to delete corrupted token:', deleteError);
+      }
+      return null;
+    }
+  }
+  },
+  async saveToken(key: string, value: string) {
+    try {
+      return SecureStore.setItemAsync(key, value);
+    } catch (error) {
+      console.error("Failed to save token to secure store:", error);
+      return;
+    }
+  },
 };
 
-export default function RootLayout() {
-  const colorScheme = useColorScheme();
+const publishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY!;
 
+if (!publishableKey) {
+  throw new Error("Add your Clerk Publishable Key to the .env file");
+}
+
+export default function RootLayout() {
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Stack>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
-      </Stack>
-      <StatusBar style="auto" />
-    </ThemeProvider>
+    <ClerkProvider publishableKey={publishableKey} tokenCache={tokenCache}>
+      <ClerkLoaded>
+        <Slot />
+      </ClerkLoaded>
+    </ClerkProvider>
   );
 }

@@ -48,3 +48,29 @@ Join our community of developers creating universal apps.
 
 - [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
 - [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+
+# NativeWind (Tailwind for React Native)
+
+npm install nativewind
+npm install --save-dev tailwindcss
+
+# Navigation
+
+npm install @react-navigation/native @react-navigation/bottom-tabs @react-navigation/stack
+npx expo install react-native-screens react-native-safe-area-context
+
+# Async Storage (for caching/preferences)
+
+npx expo install @react-native-async-storage/async-storage
+
+# Location
+
+npx expo install expo-location
+
+# Icons
+
+npm install @expo/vector-icons
+
+# Date/time utilities
+
+npm install date-fns
