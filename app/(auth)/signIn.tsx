@@ -1,4 +1,4 @@
-import { useAuth, useSignIn } from "@clerk/expo";
+import { useSignIn } from "@clerk/expo";
 import { Link, useRouter } from "expo-router";
 import React, { useState } from "react";
 import {
@@ -13,7 +13,6 @@ import {
 
 export default function SignIn() {
   const { signIn, errors, fetchStatus } = useSignIn();
-  const { user } = useAuth();
 
   const router = useRouter();
 
@@ -139,7 +138,7 @@ export default function SignIn() {
         <Text className="text-xl font-bold text-gray-800 mb-4">
           Welcome Back
         </Text>
-        <Text className="w-full border border-gray-300 rounded-xl px-4 py-3 mb-4">
+        <Text className="text-2xl font-bold text-gray-900 mb-4">
           Sign in to your account
         </Text>
         <View className="flex-col gap-3 mb-4">

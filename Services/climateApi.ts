@@ -1,4 +1,4 @@
-import { API } from "../constants/apiUrls";
+import { API } from "../constants";
 import { calcSPI } from "./archiveApi";
 import { calcDroughtSeverity } from "./disasterLogic";
 

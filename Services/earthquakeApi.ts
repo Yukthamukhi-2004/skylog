@@ -1,5 +1,4 @@
-import { API } from "../constants/apiUrls";
-import { THRESHOLDS as T } from "../constants/thresholds";
+import { API, THRESHOLDS as T } from "../constants";
 
 export interface Earthquake {
   id: string;

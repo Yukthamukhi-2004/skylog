@@ -1,4 +1,4 @@
-import { API } from "../constants/apiUrls";
+import { API } from "../constants";
 
 export interface GeoLocation {
   id: number;

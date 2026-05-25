@@ -1,4 +1,4 @@
-import { API } from "../constants/apiUrls";
+import { API } from "../constants";
 
 const FETCH_TIMEOUT_MS = 10000;
 

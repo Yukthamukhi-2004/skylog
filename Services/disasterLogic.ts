@@ -1,4 +1,4 @@
-import { THRESHOLDS as T } from "../constants/thresholds";
+import { THRESHOLDS as T } from "../constants";
 
 export function calcFloodSeverity(discharge: number, elevation: number) {
   const speed_ms = Math.pow(discharge / 50, 0.4); // Manning approx

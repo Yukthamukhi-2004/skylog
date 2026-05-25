@@ -1,4 +1,4 @@
-import { API } from "../constants/apiUrls";
+import { API } from "../constants";
 
 const DEFAULT_API_TIMEOUT = 10000;
 

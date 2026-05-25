@@ -9,16 +9,15 @@ const tokenCache = {
       const item = await SecureStore.getItemAsync(key);
       return item;
     } catch (error) {
-      console.error('Failed to read token from secure store:', error);
+      console.error("Failed to read token from secure store:", error);
       // Only delete if the token is corrupted, not on transient errors
       try {
         await SecureStore.deleteItemAsync(key);
       } catch (deleteError) {
-        console.error('Failed to delete corrupted token:', deleteError);
+        console.error("Failed to delete corrupted token:", deleteError);
       }
       return null;
     }
-  }
   },
   async saveToken(key: string, value: string) {
     try {
