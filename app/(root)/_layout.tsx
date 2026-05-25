@@ -1,7 +1,7 @@
 import { useAuth } from "@clerk/expo";
 import { Redirect, Slot } from "expo-router";
 
-export default function RoutLayout() {
+export default function RoutesLayout() {
   const { isSignedIn, isLoaded } = useAuth();
 
   //sync clerk user -> supabase(well buid this later)

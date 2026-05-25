@@ -1,7 +1,11 @@
 import { ClerkLoaded, ClerkProvider } from "@clerk/expo";
 import { Slot } from "expo-router";
 import * as SecureStore from "expo-secure-store";
+import { ActivityIndicator, View } from "react-native";
+import { Provider } from "react-redux";
+import { PersistGate } from "redux-persist/integration/react";
 import "../global.css";
+import { persistor, store } from "../store/index";
 
 const tokenCache = {
   async getToken(key: string) {
@@ -10,7 +14,6 @@ const tokenCache = {
       return item;
     } catch (error) {
       console.error("Failed to read token from secure store:", error);
-      // Only delete if the token is corrupted, not on transient errors
       try {
         await SecureStore.deleteItemAsync(key);
       } catch (deleteError) {
@@ -35,12 +38,25 @@ if (!publishableKey) {
   throw new Error("Add your Clerk Publishable Key to the .env file");
 }
 
+// Shown while Redux is rehydrating persisted state from AsyncStorage
+function LoadingScreen() {
+  return (
+    <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+      <ActivityIndicator size="large" />
+    </View>
+  );
+}
+
 export default function RootLayout() {
   return (
-    <ClerkProvider publishableKey={publishableKey} tokenCache={tokenCache}>
-      <ClerkLoaded>
-        <Slot />
-      </ClerkLoaded>
-    </ClerkProvider>
+    <Provider store={store}>
+      <PersistGate loading={<LoadingScreen />} persistor={persistor}>
+        <ClerkProvider publishableKey={publishableKey} tokenCache={tokenCache}>
+          <ClerkLoaded>
+            <Slot />
+          </ClerkLoaded>
+        </ClerkProvider>
+      </PersistGate>
+    </Provider>
   );
 }
