@@ -1,71 +1,60 @@
-import * as Stable from "expo-router";
-import * as Unstable from "expo-router/unstable-native-tabs";
-import React from "react";
-import { Text, View } from "react-native";
+import { FontAwesome } from "@expo/vector-icons";
+import { Tabs } from "expo-router";
 
-type AnyComp = React.ComponentType<any>;
-let Icon: AnyComp, Label: AnyComp, NativeTabs: AnyComp & { Trigger: AnyComp };
-try {
-  if (
-    (Stable as any)?.NativeTabs &&
-    (Stable as any)?.Icon &&
-    (Stable as any)?.Label
-  ) {
-    Icon = (Stable as any).Icon;
-    Label = (Stable as any).Label;
-    NativeTabs = (Stable as any).NativeTabs;
-  } else {
-    Icon = (Unstable as any).Icon;
-    Label = (Unstable as any).Label;
-    NativeTabs = (Unstable as any).NativeTabs;
-  }
-} catch (err) {
-  // Fallback shims to avoid runtime crashes; these render basic content and
-  // should be replaced by the proper tabs implementation for production.
-
-  function IconFallback(props: any) {
-    return React.createElement(Text, null, "");
-  }
-  Icon = IconFallback;
-
-  function LabelFallback(props: { children?: React.ReactNode }) {
-    return React.createElement(Text, null, props.children || "");
-  }
-  Label = LabelFallback;
-
-  function NativeTabsFallback({ children }: { children?: React.ReactNode }) {
-    return React.createElement(View, null, children);
-  }
-  NativeTabs = NativeTabsFallback as any;
-  (NativeTabs as any).Trigger = function NativeTabsTriggerFallback(props: any) {
-    return React.createElement(View, null, props.children);
-  };
-  // log once so developers are aware
-  console.warn(
-    "expo-router native tabs import failed; using fallback. See TODO in _layout.jsx",
-    err,
-  );
-}
-
-export default function TabLayout() {
+export default function TabsLayout() {
   return (
-    <NativeTabs>
-      <NativeTabs.Trigger name="index">
-        <Label>Home</Label>
-        <Icon sf="house.fill" />
-      </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="Analysis">
-        <Icon sf="graph.fill" />
-        <Label>Analysis</Label>
-      </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="saved">
-        <Icon sf="heart.fill" />
-        <Label>Saved</Label>
-      </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="profile">
-        <Icon sf="person.fill" />
-        <Label>Profile</Label>
-      </NativeTabs.Trigger>
-    </NativeTabs>
+    <Tabs
+      screenOptions={{
+        tabBarShowLabel: true,
+        tabBarActiveTintColor: "#007AFF", // Vibrant active blue
+        tabBarInactiveTintColor: "#8E8E93", // Muted gray
+        tabBarStyle: {
+          backgroundColor: "#121212", // Match your dark theme
+          borderTopWidth: 1,
+          borderTopColor: "#1E1E1E",
+          height: 65,
+          paddingBottom: 10,
+          paddingTop: 8,
+        },
+        headerShown: false, // Hides default header so you can use custom ones
+      }}
+    >
+      <Tabs.Screen
+        name="index"
+        options={{
+          title: "Home",
+          tabBarIcon: ({ color, size }) => (
+            <FontAwesome name="home" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="Analysis"
+        options={{
+          title: "Analysis",
+          tabBarIcon: ({ color, size }) => (
+            <FontAwesome name="bar-chart" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="Maps"
+        options={{
+          title: "Maps",
+          tabBarIcon: ({ color, size }) => (
+            <FontAwesome name="location-arrow" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="profile"
+        options={{
+          title: "Profile",
+          tabBarIcon: ({ color, size }) => (
+            <FontAwesome name="user" size={size} color={color} />
+          ),
+        }}
+      />
+    </Tabs>
   );
 }

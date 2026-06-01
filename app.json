@@ -3,6 +3,7 @@
     "name": "ReactNative",
     "slug": "ReactNative",
     "version": "1.0.0",
+    "platforms": ["ios", "android", "web"],
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "reactnative",
@@ -14,7 +15,7 @@
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
-
+      "usesCleartextTraffic": true,
       "predictiveBackGestureEnabled": false,
       "package": "com.yukthamukhi.ReactNative"
     },
@@ -37,7 +38,8 @@
         }
       ],
       "expo-secure-store",
-      "@clerk/expo"
+      "@clerk/expo",
+      "expo-font"
     ],
     "experiments": {
       "typedRoutes": true,

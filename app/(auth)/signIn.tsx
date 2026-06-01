@@ -3,7 +3,6 @@ import { Link, useRouter } from "expo-router";
 import React, { useState } from "react";
 import {
   ActivityIndicator,
-  Image,
   ScrollView,
   Text,
   TextInput,
@@ -13,7 +12,6 @@ import {
 
 export default function SignIn() {
   const { signIn, errors, fetchStatus } = useSignIn();
-
   const router = useRouter();
 
   const [email, setEmail] = useState("");
@@ -36,10 +34,7 @@ export default function SignIn() {
     if (signIn.status === "complete") {
       await signIn.finalize({
         navigate: ({ session, decorateUrl }) => {
-          if (session?.currentTask) {
-            console.log(session?.currentTask);
-            return;
-          }
+          if (session?.currentTask) return;
           const url = decorateUrl("/");
           router.replace(url as any);
         },
@@ -51,28 +46,16 @@ export default function SignIn() {
         (factor) => factor.strategy === "email_code",
       );
 
-      if (emailCodeFactor) {
-        await signIn.mfa.sendEmailCode();
-      }
-    } else {
-      console.error("SignIn attempt not complete:", signIn);
+      if (emailCodeFactor) await signIn.mfa.sendEmailCode();
     }
-
-    /* if (!error) await signIn.verifications.sendEmailCode(); */
   };
 
   const onVerifyPress = async () => {
-    await signIn.mfa.verifyEmailCode({
-      code,
-    });
-
+    await signIn.mfa.verifyEmailCode({ code });
     if (signIn.status === "complete") {
       await signIn.finalize({
         navigate: ({ session, decorateUrl }) => {
-          if (session?.currentTask) {
-            console.log(session?.currentTask);
-            return;
-          }
+          if (session?.currentTask) return;
           const url = decorateUrl("/");
           router.replace(url as any);
         },
@@ -82,115 +65,150 @@ export default function SignIn() {
 
   if (signIn.status === "needs_client_trust") {
     return (
-      <View className="flex-1 justify-center px-6 py-12">
-        <Image />
-        <Text className="text-3xl font-bold text-gray-500 mb-2">
-          Verify your Account{" "}
+      <View style={{ flex: 1, justifyContent: "center", padding: 24 }}>
+        <Text style={{ fontSize: 22, fontWeight: "700", marginBottom: 8 }}>
+          Verify your Account
         </Text>
-        <Text className="text-gray-500 mb-2">
+        <Text style={{ color: "#6b7280", marginBottom: 12 }}>
           We sent a code to your {email}
         </Text>
         <TextInput
-          className="w-full border border-gray-300 rounded-xl px-4 py-3 mb-4"
           placeholder="Enter Verification Code"
           placeholderTextColor="#9CA3AF"
           keyboardType="number-pad"
           value={code}
           onChangeText={setCode}
+          style={{
+            borderWidth: 1,
+            borderColor: "#e5e7eb",
+            padding: 12,
+            borderRadius: 12,
+            marginBottom: 12,
+          }}
         />
         {errors.fields.code && (
-          <Text className="text-red-500 mb-4">
+          <Text style={{ color: "#ef4444", marginBottom: 12 }}>
             {errors.fields.code.message}
           </Text>
         )}
         <TouchableOpacity
           onPress={onVerifyPress}
           disabled={isLoading}
-          className="w-full bg-blue-600 py-4 rounded-xl items-center mb-4"
+          style={{
+            backgroundColor: "#2563eb",
+            padding: 14,
+            borderRadius: 12,
+            alignItems: "center",
+          }}
         >
           {isLoading ? (
             <ActivityIndicator color="white" />
           ) : (
-            <Text className="text-white font-bold text-base">Verify</Text>
+            <Text style={{ color: "white", fontWeight: "700" }}>Verify</Text>
           )}
-        </TouchableOpacity>
-        <TouchableOpacity
-          onPress={() => signIn.mfa.sendEmailCode()}
-          className="py-2"
-        >
-          <Text className="text-blue-600">I need a new code</Text>
         </TouchableOpacity>
       </View>
     );
   }
+
   return (
     <ScrollView
       contentContainerStyle={{ flexGrow: 1 }}
-      className="bg-white"
       keyboardShouldPersistTaps="handled"
     >
-      <View className="flex-1 justify-center px-6 py-12">
-        <Image /> {/* logo of website */}
-        <Text className="text-3xl font-bold text-black mb-1">ShyLog</Text>
-        <Text className="text-gray-500 mb-10">
+      <View style={{ flex: 1, justifyContent: "center", padding: 24 }}>
+        <Text style={{ fontSize: 28, fontWeight: "700", marginBottom: 6 }}>
+          ShyLog
+        </Text>
+        <Text style={{ color: "#6b7280", marginBottom: 18 }}>
           Your personalized shield against the elements.
         </Text>
-        <Text className="text-xl font-bold text-gray-800 mb-4">
+
+        <Text style={{ fontSize: 20, fontWeight: "700", marginBottom: 8 }}>
           Welcome Back
         </Text>
-        <Text className="text-2xl font-bold text-gray-900 mb-4">
+        <Text style={{ fontSize: 16, fontWeight: "600", marginBottom: 16 }}>
           Sign in to your account
         </Text>
-        <View className="flex-col gap-3 mb-4">
-          <TextInput
-            className="flex-1 border border-gray-300 rounded-xl px-4 py-3"
-            placeholder="Email address"
-            placeholderTextColor="#9CA3AF"
-            autoCapitalize="none"
-            value={email}
-            keyboardType="email-address"
-            onChangeText={setEmail}
-          />
-          {errors.fields.identifier && (
-            <Text className="text-red-500">
-              {errors.fields.identifier.message}
-            </Text>
-          )}
-          <TextInput
-            className="flex-1 border border-gray-300 rounded-xl px-4 py-3"
-            placeholder="Password"
-            placeholderTextColor="#9CA3AF"
-            secureTextEntry
-            value={password}
-            onChangeText={setPassword}
-          />
-          {errors.fields.password && (
-            <Text className="text-red-500">
-              {errors.fields.password.message}
-            </Text>
-          )}
-          <TouchableOpacity
-            onPress={onSignInPress}
-            disabled={isLoading}
-            className="w-full bg-blue-600 py-4 rounded-xl items-center mb-4"
-          >
-            {isLoading ? (
-              <ActivityIndicator color="white" />
-            ) : (
-              <Text className="text-white font-bold text-base">Sign In</Text>
-            )}
-          </TouchableOpacity>
 
-          <View className="flex-row justify-center">
-            <Text className="text-gray-500">Don&apos;t have an account?</Text>
-            <Link href="/signUp">
-              <Link href="/signUp">
-                <Text className="text-blue-600 font-semibold">Sign Up</Text>
-              </Link>
-            </Link>
-          </View>
-          <View nativeID="clerk-captcha" />
+        <TextInput
+          placeholder="Email address"
+          placeholderTextColor="#9CA3AF"
+          autoCapitalize="none"
+          value={email}
+          keyboardType="email-address"
+          onChangeText={setEmail}
+          style={{
+            borderWidth: 1,
+            borderColor: "#e5e7eb",
+            padding: 12,
+            borderRadius: 12,
+            marginBottom: 12,
+          }}
+        />
+        {errors.fields.identifier && (
+          <Text style={{ color: "#ef4444" }}>
+            {errors.fields.identifier.message}
+          </Text>
+        )}
+
+        <TextInput
+          placeholder="Password"
+          placeholderTextColor="#9CA3AF"
+          secureTextEntry
+          value={password}
+          onChangeText={setPassword}
+          style={{
+            borderWidth: 1,
+            borderColor: "#e5e7eb",
+            padding: 12,
+            borderRadius: 12,
+            marginTop: 12,
+            marginBottom: 12,
+          }}
+        />
+        {errors.fields.password && (
+          <Text style={{ color: "#ef4444" }}>
+            {errors.fields.password.message}
+          </Text>
+        )}
+
+        <TouchableOpacity
+          onPress={onSignInPress}
+          disabled={isLoading}
+          style={{
+            backgroundColor: "#2563eb",
+            padding: 14,
+            borderRadius: 12,
+            alignItems: "center",
+            marginTop: 8,
+          }}
+        >
+          {isLoading ? (
+            <ActivityIndicator color="white" />
+          ) : (
+            <Text style={{ color: "white", fontWeight: "700" }}>Sign In</Text>
+          )}
+        </TouchableOpacity>
+
+        <View
+          style={{
+            flexDirection: "row",
+            justifyContent: "center",
+            marginTop: 16,
+          }}
+        >
+          <Text style={{ color: "#6b7280" }}>Do not have an account?</Text>
+          <Link href="/signUp">
+            <Text
+              style={{ color: "#2563eb", fontWeight: "700", marginLeft: 8 }}
+            >
+              Sign Up
+            </Text>
+          </Link>
         </View>
+
+        <View nativeID="clerk-captcha" />
       </View>
     </ScrollView>
   );

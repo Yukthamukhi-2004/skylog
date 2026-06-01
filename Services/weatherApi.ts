@@ -3,6 +3,10 @@ import { API } from "../constants";
 const DEFAULT_API_TIMEOUT = 10000;
 
 export async function fetchWeather(lat: number, lon: number) {
+  if (lat === undefined || lon === undefined) {
+    throw new Error("Missing coordinates");
+  }
+
   const params = new URLSearchParams({
     latitude: lat.toString(),
     longitude: lon.toString(),
@@ -38,11 +42,18 @@ export async function fetchWeather(lat: number, lon: number) {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), DEFAULT_API_TIMEOUT);
 
-  let res: Response;
   try {
-    res = await fetch(`${API.FORECAST}?${params}`, {
+    const targetUrl = `${API.FORECAST}?${params.toString()}`;
+    console.log("Requesting Weather from URL:", targetUrl);
+
+    const res = await fetch(targetUrl, {
       signal: controller.signal,
     });
+    if (!res.ok) {
+      throw new Error(`Weather fetch failed with status: ${res.status}`);
+    }
+
+    return await res.json();
   } catch (error) {
     if ((error as any)?.name === "AbortError") {
       throw new Error("Weather fetch timed out");
@@ -51,7 +62,4 @@ export async function fetchWeather(lat: number, lon: number) {
   } finally {
     clearTimeout(timeoutId);
   }
-
-  if (!res.ok) throw new Error("Weather fetch failed");
-  return res.json();
 }

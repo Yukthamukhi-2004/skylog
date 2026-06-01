@@ -27,7 +27,7 @@ export async function fetchAirQuality(lat: number, lon: number) {
 
   let res: Response;
   try {
-    res = await fetch(`${API.AIR_QUALITY}?${params}`, {
+    res = await fetch(`${API.AIR_QUALITY}?${params.toString()}`, {
       signal: controller.signal,
     });
   } catch (error) {
