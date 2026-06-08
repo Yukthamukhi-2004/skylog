@@ -1,0 +1,7 @@
+- [x] Understand weather timeout root cause in Services/weatherApi.ts / hooks/useWeatherData.ts
+- [x] Update weather API fetch to reduce timeout + improve robustness (retry/backoff, better abort/cleanup)
+- [x] Add logging for timed out URLs and coordinates
+- [x] Consider parallel fetch behavior in useWeatherData (avoid whole Promise.all failing)
+- [x] Update UI/error handling in Maps.tsx to not block entirely on weather-only failure
+- [x] Run TypeScript checks / lint
+- [ ] Verify on device/emulator: weather fetch no longer times out (or degrades gracefully)

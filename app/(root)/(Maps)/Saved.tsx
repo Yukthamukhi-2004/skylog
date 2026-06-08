@@ -1,6 +1,6 @@
 import { FontAwesome } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useRef } from "react";
 import {
   Alert,
   Animated,
@@ -11,34 +11,24 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import {
-  clearAllLocations,
-  getSavedLocations,
-  removeLocation,
-} from "../../../context/savedLocationsService";
+import { useSavedLocations } from "../../../context/savedLocationsService";
 import { LocationSuggestion } from "./Search";
 
 export default function SavedScreen() {
   const router = useRouter();
-  const [locations, setLocations] = useState<LocationSuggestion[]>([]);
-  const [loading, setLoading] = useState(true);
-  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const fadeAnim = useRef(new Animated.Value(1)).current;
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    const data = await getSavedLocations();
-    setLocations(data);
-    setLoading(false);
-    Animated.timing(fadeAnim, {
-      toValue: 1,
-      duration: 400,
-      useNativeDriver: true,
-    }).start();
-  }, [fadeAnim]);
+  const {
+    savedLocations: rawLocations,
+    removeLocation,
+    clearAllLocations,
+    isLoading,
+  } = useSavedLocations();
 
-  useEffect(() => {
-    load();
-  }, [load]);
+  // ✅ Hard guarantee — even if context somehow gives undefined, we never crash
+  const locations: LocationSuggestion[] = Array.isArray(rawLocations)
+    ? rawLocations
+    : [];
 
   const handleRemove = (item: LocationSuggestion) => {
     Alert.alert(
@@ -49,10 +39,7 @@ export default function SavedScreen() {
         {
           text: "Remove",
           style: "destructive",
-          onPress: async () => {
-            await removeLocation(item.id);
-            setLocations((prev) => prev.filter((l) => l.id !== item.id));
-          },
+          onPress: () => removeLocation(item.id),
         },
       ],
     );
@@ -65,10 +52,7 @@ export default function SavedScreen() {
       {
         text: "Clear All",
         style: "destructive",
-        onPress: async () => {
-          await clearAllLocations();
-          setLocations([]);
-        },
+        onPress: () => clearAllLocations(),
       },
     ]);
   };
@@ -90,31 +74,45 @@ export default function SavedScreen() {
 
     return (
       <Animated.View style={{ opacity: itemFade }}>
-        <View style={styles.locationCard}>
-          <View style={styles.cardLeft}>
-            <View style={styles.markerIcon}>
-              <FontAwesome name="map-marker" size={16} color="#fff" />
-            </View>
-            <View style={styles.cardInfo}>
-              <Text style={styles.locationName}>{item.name}</Text>
-              <Text style={styles.locationSub} numberOfLines={1}>
-                {item.fullName}
-              </Text>
-              <View style={styles.coordRow}>
-                <Text style={styles.coordText}>
-                  {item.latitude.toFixed(4)}, {item.longitude.toFixed(4)}
+        <TouchableOpacity
+          activeOpacity={0.75}
+          onPress={() =>
+            router.push({
+              pathname: "/(root)/(Maps)/MapLayout",
+              params: {
+                savedLat: item.latitude.toString(),
+                savedLng: item.longitude.toString(),
+                savedName: item.name,
+              },
+            })
+          }
+        >
+          <View style={styles.locationCard}>
+            <View style={styles.cardLeft}>
+              <View style={styles.markerIcon}>
+                <FontAwesome name="map-marker" size={16} color="#fff" />
+              </View>
+              <View style={styles.cardInfo}>
+                <Text style={styles.locationName}>{item.name}</Text>
+                <Text style={styles.locationSub} numberOfLines={1}>
+                  {item.fullName}
                 </Text>
+                <View style={styles.coordRow}>
+                  <Text style={styles.coordText}>
+                    {item.latitude.toFixed(4)}, {item.longitude.toFixed(4)}
+                  </Text>
+                </View>
               </View>
             </View>
+            <TouchableOpacity
+              onPress={() => handleRemove(item)}
+              style={styles.deleteBtn}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <FontAwesome name="trash-o" size={17} color="#e53e3e" />
+            </TouchableOpacity>
           </View>
-          <TouchableOpacity
-            onPress={() => handleRemove(item)}
-            style={styles.deleteBtn}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          >
-            <FontAwesome name="trash-o" size={17} color="#e53e3e" />
-          </TouchableOpacity>
-        </View>
+        </TouchableOpacity>
       </Animated.View>
     );
   };
@@ -123,7 +121,10 @@ export default function SavedScreen() {
     <SafeAreaView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+        <TouchableOpacity
+          onPress={() => router.push("/(root)/(tabs)/Maps")}
+          style={styles.backBtn}
+        >
           <FontAwesome name="arrow-left" size={18} color="#1a1a2e" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Saved Locations</Text>
@@ -156,40 +157,42 @@ export default function SavedScreen() {
         </Animated.View>
       )}
 
-      {/* List */}
-      {!loading && (
-        <Animated.View style={{ flex: 1, opacity: fadeAnim }}>
-          {locations.length === 0 ? (
-            <View style={styles.emptyState}>
-              <View style={styles.emptyIconWrap}>
-                <FontAwesome name="bookmark-o" size={44} color="#cbd5e0" />
-              </View>
-              <Text style={styles.emptyTitle}>No saved locations</Text>
-              <Text style={styles.emptyText}>
-                Search for a location and tap Save Location to add it here.
-              </Text>
-              <TouchableOpacity
-                style={styles.searchBtn}
-                onPress={() => router.push("/(root)/(Maps)/Search")}
-              >
-                <FontAwesome name="search" size={14} color="#fff" />
-                <Text style={styles.searchBtnText}>Search Locations</Text>
-              </TouchableOpacity>
+      <Animated.View style={{ flex: 1, opacity: fadeAnim }}>
+        {/* ✅ Show loading skeleton while fetching */}
+        {isLoading ? (
+          <View style={styles.emptyState}>
+            <FontAwesome name="spinner" size={32} color="#cbd5e0" />
+            <Text style={styles.emptyTitle}>Loading…</Text>
+          </View>
+        ) : locations.length === 0 ? (
+          <View style={styles.emptyState}>
+            <View style={styles.emptyIconWrap}>
+              <FontAwesome name="bookmark-o" size={44} color="#cbd5e0" />
             </View>
-          ) : (
-            <FlatList
-              data={locations}
-              keyExtractor={(item) => item.id}
-              contentContainerStyle={styles.listContent}
-              renderItem={renderItem}
-              ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
-              showsVerticalScrollIndicator={false}
-            />
-          )}
-        </Animated.View>
-      )}
+            <Text style={styles.emptyTitle}>No saved locations</Text>
+            <Text style={styles.emptyText}>
+              Search for a location and tap Save Location to add it here.
+            </Text>
+            <TouchableOpacity
+              style={styles.searchBtn}
+              onPress={() => router.push("/(root)/(Maps)/Search")}
+            >
+              <FontAwesome name="search" size={14} color="#fff" />
+              <Text style={styles.searchBtnText}>Search Locations</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <FlatList
+            data={locations}
+            keyExtractor={(item) => item.id}
+            contentContainerStyle={styles.listContent}
+            renderItem={renderItem}
+            ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
+            showsVerticalScrollIndicator={false}
+          />
+        )}
+      </Animated.View>
 
-      {/* FAB to search */}
       {locations.length > 0 && (
         <TouchableOpacity
           style={styles.fab}
@@ -204,10 +207,7 @@ export default function SavedScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#f7f9fc",
-  },
+  container: { flex: 1, backgroundColor: "#f7f9fc" },
   header: {
     flexDirection: "row",
     alignItems: "center",
@@ -233,21 +233,10 @@ const styles = StyleSheet.create({
     color: "#1a1a2e",
     letterSpacing: 0.3,
   },
-  clearBtn: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-  },
-  clearBtnDisabled: {
-    opacity: 0.3,
-  },
-  clearText: {
-    fontSize: 14,
-    color: "#e53e3e",
-    fontWeight: "600",
-  },
-  clearTextDisabled: {
-    color: "#aaa",
-  },
+  clearBtn: { paddingHorizontal: 8, paddingVertical: 4 },
+  clearBtnDisabled: { opacity: 0.3 },
+  clearText: { fontSize: 14, color: "#e53e3e", fontWeight: "600" },
+  clearTextDisabled: { color: "#aaa" },
   countBadge: {
     flexDirection: "row",
     alignItems: "center",
@@ -256,15 +245,8 @@ const styles = StyleSheet.create({
     marginTop: 14,
     marginBottom: 4,
   },
-  countText: {
-    fontSize: 13,
-    color: "#4A90E2",
-    fontWeight: "600",
-  },
-  listContent: {
-    padding: 16,
-    paddingBottom: 80,
-  },
+  countText: { fontSize: 13, color: "#4A90E2", fontWeight: "600" },
+  listContent: { padding: 16, paddingBottom: 80 },
   locationCard: {
     flexDirection: "row",
     alignItems: "center",
@@ -277,11 +259,7 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     elevation: 3,
   },
-  cardLeft: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-  },
+  cardLeft: { flex: 1, flexDirection: "row", alignItems: "center" },
   markerIcon: {
     width: 36,
     height: 36,
@@ -291,27 +269,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginRight: 12,
   },
-  cardInfo: {
-    flex: 1,
-  },
-  locationName: {
-    fontSize: 15,
-    fontWeight: "700",
-    color: "#1a1a2e",
-  },
-  locationSub: {
-    fontSize: 12,
-    color: "#888",
-    marginTop: 2,
-  },
-  coordRow: {
-    marginTop: 4,
-  },
-  coordText: {
-    fontSize: 11,
-    color: "#bbb",
-    fontWeight: "500",
-  },
+  cardInfo: { flex: 1 },
+  locationName: { fontSize: 15, fontWeight: "700", color: "#1a1a2e" },
+  locationSub: { fontSize: 12, color: "#888", marginTop: 2 },
+  coordRow: { marginTop: 4 },
+  coordText: { fontSize: 11, color: "#bbb", fontWeight: "500" },
   deleteBtn: {
     width: 36,
     height: 36,
@@ -360,11 +322,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 12,
   },
-  searchBtnText: {
-    color: "#fff",
-    fontWeight: "700",
-    fontSize: 14,
-  },
+  searchBtnText: { color: "#fff", fontWeight: "700", fontSize: 14 },
   fab: {
     position: "absolute",
     bottom: 24,

@@ -16,10 +16,7 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import {
-  getSavedLocations,
-  saveLocation,
-} from "../../../context/savedLocationsService";
+import { useSavedLocations } from "../../../context/savedLocationsService";
 
 export type LocationSuggestion = {
   id: string;
@@ -37,11 +34,14 @@ export default function SearchScreen() {
   const [suggestions, setSuggestions] = useState<LocationSuggestion[]>([]);
   const [loading, setLoading] = useState(false);
   const [selected, setSelected] = useState<LocationSuggestion | null>(null);
-  const [savedIds, setSavedIds] = useState<Set<string>>(new Set());
+  const [isSaving, setIsSaving] = useState(false); // ✅ loading state for save button
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const inputRef = useRef<TextInput>(null);
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(20)).current;
+
+  // ✅ Use isLocationSaved from context — checks by lat/lng, not by Nominatim id
+  const { saveLocation, isLocationSaved } = useSavedLocations();
 
   useEffect(() => {
     Animated.parallel([
@@ -56,13 +56,7 @@ export default function SearchScreen() {
         useNativeDriver: true,
       }),
     ]).start();
-    loadSavedIds();
   }, [fadeAnim, slideAnim]);
-
-  const loadSavedIds = async () => {
-    const saved = await getSavedLocations();
-    setSavedIds(new Set(saved.map((l) => l.id)));
-  };
 
   const fetchSuggestions = async (text: string) => {
     if (text.trim().length < 2) {
@@ -109,7 +103,6 @@ export default function SearchScreen() {
         };
       });
 
-      // Deduplicate by fullName
       const seen = new Set<string>();
       const unique = mapped.filter((s) => {
         if (seen.has(s.fullName)) return false;
@@ -140,30 +133,44 @@ export default function SearchScreen() {
   };
 
   const handleSave = async () => {
-    if (!selected) return;
-    if (savedIds.has(selected.id)) {
+    if (!selected || isSaving) return;
+
+    // ✅ Check by coordinates — Nominatim id ≠ Supabase UUID
+    if (isLocationSaved(selected.latitude, selected.longitude)) {
       Alert.alert(
         "Already Saved",
         `"${selected.name}" is already in your saved locations.`,
       );
       return;
     }
-    await saveLocation(selected);
-    setSavedIds((prev) => new Set([...prev, selected.id]));
-    Alert.alert(
-      "Saved!",
-      `"${selected.name}" has been saved to your locations.`,
-      [
-        {
-          text: "View Saved",
-          onPress: () => router.push("/(root)/(Maps)/Saved"),
-        },
-        { text: "OK" },
-      ],
-    );
+
+    setIsSaving(true);
+    try {
+      // ✅ await mutateAsync so we know the DB write completed before showing alert
+      await saveLocation(selected);
+      Alert.alert(
+        "Saved!",
+        `"${selected.name}" has been saved to your locations.`,
+        [
+          {
+            text: "View Saved",
+            onPress: () => router.push("/(root)/(Maps)/Saved"),
+          },
+          { text: "OK" },
+        ],
+      );
+    } catch (err) {
+      Alert.alert("Error", "Failed to save location. Please try again.");
+      console.error("Save error:", err);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
-  const isAlreadySaved = selected ? savedIds.has(selected.id) : false;
+  // ✅ Derived from context — always in sync with what's actually in Supabase
+  const isAlreadySaved = selected
+    ? isLocationSaved(selected.latitude, selected.longitude)
+    : false;
 
   return (
     <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
@@ -175,7 +182,7 @@ export default function SearchScreen() {
           ]}
         >
           <TouchableOpacity
-            onPress={() => router.back()}
+            onPress={() => router.push("/(root)/(tabs)/Maps")}
             style={styles.backBtn}
           >
             <FontAwesome name="arrow-left" size={18} color="#1a1a2e" />
@@ -233,7 +240,6 @@ export default function SearchScreen() {
           )}
         </Animated.View>
 
-        {/* Suggestions List */}
         {suggestions.length > 0 && (
           <Animated.View
             style={[styles.suggestionsCard, { opacity: fadeAnim }]}
@@ -258,7 +264,8 @@ export default function SearchScreen() {
                       {[item.state, item.country].filter(Boolean).join(", ")}
                     </Text>
                   </View>
-                  {savedIds.has(item.id) && (
+                  {/* ✅ Check by coordinates in suggestion list too */}
+                  {isLocationSaved(item.latitude, item.longitude) && (
                     <FontAwesome name="bookmark" size={12} color="#e53e3e" />
                   )}
                 </TouchableOpacity>
@@ -267,7 +274,6 @@ export default function SearchScreen() {
           </Animated.View>
         )}
 
-        {/* Selected Location Card */}
         {selected && (
           <Animated.View style={[styles.selectedCard, { opacity: fadeAnim }]}>
             <View style={styles.selectedHeader}>
@@ -302,23 +308,33 @@ export default function SearchScreen() {
               )}
             </View>
             <TouchableOpacity
-              style={[styles.saveBtn, isAlreadySaved && styles.saveBtnDisabled]}
+              style={[
+                styles.saveBtn,
+                (isAlreadySaved || isSaving) && styles.saveBtnDisabled,
+              ]}
               onPress={handleSave}
-              disabled={isAlreadySaved}
+              disabled={isAlreadySaved || isSaving}
             >
-              <FontAwesome
-                name={isAlreadySaved ? "check" : "bookmark"}
-                size={15}
-                color="#fff"
-              />
+              {isSaving ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <FontAwesome
+                  name={isAlreadySaved ? "check" : "bookmark"}
+                  size={15}
+                  color="#fff"
+                />
+              )}
               <Text style={styles.saveBtnText}>
-                {isAlreadySaved ? "Already Saved" : "Save Location"}
+                {isSaving
+                  ? "Saving…"
+                  : isAlreadySaved
+                    ? "Already Saved"
+                    : "Save Location"}
               </Text>
             </TouchableOpacity>
           </Animated.View>
         )}
 
-        {/* Empty state */}
         {!loading &&
           suggestions.length === 0 &&
           !selected &&

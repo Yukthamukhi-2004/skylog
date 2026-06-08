@@ -1,6 +1,5 @@
 import { FontAwesome } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { useState } from "react";
 import {
   ActivityIndicator,
   Platform,
@@ -18,14 +17,16 @@ let MapView: any,
   PROVIDER_GOOGLE: any = null;
 
 if (Platform.OS !== "web") {
-  try {
-    const MapsModule = require("react-native-maps");
-    MapView = MapsModule.default;
-    Marker = MapsModule.Marker;
-    PROVIDER_GOOGLE = MapsModule.PROVIDER_GOOGLE;
-  } catch (e) {
-    console.warn("Maps failed to load dynamically:", e);
-  }
+  (async () => {
+    try {
+      const MapsModule = await import("react-native-maps");
+      MapView = MapsModule.default;
+      Marker = MapsModule.Marker;
+      PROVIDER_GOOGLE = MapsModule.PROVIDER_GOOGLE;
+    } catch (e) {
+      console.warn("Maps failed to load dynamically:", e);
+    }
+  })();
 }
 
 const stormyMapStyle = [
@@ -53,8 +54,11 @@ const sunnyMapStyle = [
 
 export default function Maps() {
   const { coords, errorMsg, loading: locationLoading } = useLocation();
-  const { weather, loading: weatherLoading } = useWeatherData(coords);
-  const [openMap, setOpenMap] = useState(false);
+  const {
+    weather,
+    loading: weatherLoading,
+    weatherError,
+  } = useWeatherData(coords);
 
   const router = useRouter();
 
@@ -67,7 +71,7 @@ export default function Maps() {
     router.push("/(root)/(Maps)/Saved");
   };
 
-  if (locationLoading || weatherLoading) {
+  if (locationLoading) {
     return (
       <View style={styles.centered}>
         <ActivityIndicator size="large" color="#4A90E2" />
@@ -90,6 +94,20 @@ export default function Maps() {
     );
   }
 
+  if (weatherError) {
+    // Degrade gracefully: show location/map, but don't block the UI.
+    console.warn("Weather error:", weatherError);
+  }
+
+  if (weatherLoading && !weather) {
+    return (
+      <View style={styles.centered}>
+        <ActivityIndicator size="large" color="#4A90E2" />
+        <Text style={styles.loadingText}>Fetching current weather...</Text>
+      </View>
+    );
+  }
+
   if (!coords) {
     return (
       <View style={styles.centered}>
@@ -108,81 +126,70 @@ export default function Maps() {
 
   return (
     <SafeAreaView style={styles.container}>
-      {!openMap ? (
-        <View style={styles.centered}>
-          <TouchableOpacity
-            style={styles.button}
-            onPress={() => setOpenMap(true)}
+      <View style={{ flex: 1 }}>
+        {Platform.OS === "web" ? (
+          <View style={styles.centered}>
+            <Text style={styles.cardText}>
+              Maps are not supported on Web layout platforms.
+            </Text>
+          </View>
+        ) : (
+          <MapView
+            style={styles.map}
+            customMapStyle={getMapStyle()}
+            provider={PROVIDER_GOOGLE}
+            initialRegion={{
+              latitude: coords.latitude,
+              longitude: coords.longitude,
+              latitudeDelta: 0.05,
+              longitudeDelta: 0.05,
+            }}
+            showsUserLocation={true}
+            showsMyLocationButton={true}
           >
-            <Text style={styles.buttonText}>Open Weather Map</Text>
-          </TouchableOpacity>
-        </View>
-      ) : (
-        <View style={{ flex: 1 }}>
-          {Platform.OS === "web" ? (
-            <View style={styles.centered}>
-              <Text style={styles.cardText}>
-                Maps are not supported on Web layout platforms.
-              </Text>
-            </View>
-          ) : (
-            <MapView
-              style={styles.map}
-              customMapStyle={getMapStyle()}
-              provider={PROVIDER_GOOGLE}
-              initialRegion={{
+            <Marker
+              coordinate={{
                 latitude: coords.latitude,
                 longitude: coords.longitude,
-                latitudeDelta: 0.05,
-                longitudeDelta: 0.05,
               }}
-              showsUserLocation={true}
-              showsMyLocationButton={true}
-            >
-              <Marker
-                coordinate={{
-                  latitude: coords.latitude,
-                  longitude: coords.longitude,
-                }}
-                title="Current Weather Location"
-                description={`${currentCondition} - ${weather?.temperature}°C`}
-              />
-            </MapView>
-          )}
+              title="Current Weather Location"
+              description={`${currentCondition} - ${weather?.temperature}°C`}
+            />
+          </MapView>
+        )}
 
-          <View style={styles.card}>
-            <Text style={styles.cardTitle}>📍 Current Location</Text>
-            <View style={styles.rowContainer}>
-              <Text style={styles.cardText}>
-                Lat: {coords.latitude.toFixed(6)}
-              </Text>
-              <Text style={styles.cardText}>
-                Lng: {coords.longitude.toFixed(6)}
-              </Text>
-            </View>
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>📍 Current Location</Text>
+          <View style={styles.rowContainer}>
             <Text style={styles.cardText}>
-              Temperature: {weather?.temperature}°C
+              Lat: {coords.latitude.toFixed(6)}
             </Text>
-            <Text style={styles.cardText}>Condition: {weather?.condition}</Text>
-            <Text style={styles.cardText}>Humidity: {weather?.humidity}</Text>
             <Text style={styles.cardText}>
-              AQI:{" "}
-              <Text style={{ color: weather?.aqiColor, fontWeight: "700" }}>
-                {weather?.aqi}
-              </Text>{" "}
+              Lng: {coords.longitude.toFixed(6)}
             </Text>
-            <Text style={styles.cardText}>Wind: {weather?.windSpeed} </Text>
           </View>
-
-          {/* FIXED: Added missing quote and linked the onPress handler */}
-          <TouchableOpacity style={styles.search} onPress={handleSearchPress}>
-            <FontAwesome name="search" size={20} color="#333" />
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.save} onPress={handleSavedPress}>
-            <FontAwesome name="bookmark" size={20} color="#ff0000" />
-          </TouchableOpacity>
+          <Text style={styles.cardText}>
+            Temperature: {weather?.temperature}°C
+          </Text>
+          <Text style={styles.cardText}>Condition: {weather?.condition}</Text>
+          <Text style={styles.cardText}>Humidity: {weather?.humidity}</Text>
+          <Text style={styles.cardText}>
+            AQI:{" "}
+            <Text style={{ color: weather?.aqiColor, fontWeight: "700" }}>
+              {weather?.aqi}
+            </Text>{" "}
+          </Text>
+          <Text style={styles.cardText}>Wind: {weather?.windSpeed} </Text>
         </View>
-      )}
+
+        {/* FIXED: Added missing quote and linked the onPress handler */}
+        <TouchableOpacity style={styles.search} onPress={handleSearchPress}>
+          <FontAwesome name="search" size={20} color="#333" />
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.save} onPress={handleSavedPress}>
+          <FontAwesome name="bookmark" size={20} color="#ff0000" />
+        </TouchableOpacity>
+      </View>
     </SafeAreaView>
   );
 }

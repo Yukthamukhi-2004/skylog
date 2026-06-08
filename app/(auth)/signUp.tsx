@@ -110,7 +110,7 @@ export default function SignUp() {
     >
       <View style={{ flex: 1, justifyContent: "center", padding: 24 }}>
         <Text style={{ fontSize: 28, fontWeight: "700", marginBottom: 6 }}>
-          ShyLog
+          SkyLog
         </Text>
         <Text style={{ color: "#6b7280", marginBottom: 18 }}>
           Your personalized shield against the elements.

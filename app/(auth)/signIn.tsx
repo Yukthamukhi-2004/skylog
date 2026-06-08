@@ -1,5 +1,5 @@
 import { useSignIn } from "@clerk/expo";
-import { Link, useRouter } from "expo-router";
+import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import {
   ActivityIndicator,
@@ -118,7 +118,7 @@ export default function SignIn() {
     >
       <View style={{ flex: 1, justifyContent: "center", padding: 24 }}>
         <Text style={{ fontSize: 28, fontWeight: "700", marginBottom: 6 }}>
-          ShyLog
+          SkyLog
         </Text>
         <Text style={{ color: "#6b7280", marginBottom: 18 }}>
           Your personalized shield against the elements.
@@ -199,13 +199,13 @@ export default function SignIn() {
           }}
         >
           <Text style={{ color: "#6b7280" }}>Do not have an account?</Text>
-          <Link href="/signUp">
+          <TouchableOpacity onPress={() => router.push("/(auth)/signUp")}>
             <Text
               style={{ color: "#2563eb", fontWeight: "700", marginLeft: 8 }}
             >
               Sign Up
             </Text>
-          </Link>
+          </TouchableOpacity>
         </View>
 
         <View nativeID="clerk-captcha" />

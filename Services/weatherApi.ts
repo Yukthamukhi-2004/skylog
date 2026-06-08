@@ -1,6 +1,11 @@
 import { API } from "../constants";
 
-const DEFAULT_API_TIMEOUT = 10000;
+const DEFAULT_API_TIMEOUT = 30000;
+const RETRY_DELAYS_MS = [0, 500, 1500]; // first attempt immediately, then 2 quick retries
+
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
 export async function fetchWeather(lat: number, lon: number) {
   if (lat === undefined || lon === undefined) {
@@ -20,6 +25,7 @@ export async function fetchWeather(lat: number, lon: number) {
       "surface_pressure",
       "uv_index",
       "precipitation",
+      "is_day",
     ].join(","),
     hourly: [
       "temperature_2m",
@@ -42,24 +48,47 @@ export async function fetchWeather(lat: number, lon: number) {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), DEFAULT_API_TIMEOUT);
 
-  try {
-    const targetUrl = `${API.FORECAST}?${params.toString()}`;
-    console.log("Requesting Weather from URL:", targetUrl);
+  const targetUrl = `${API.FORECAST}?${params.toString()}`;
+  let lastError: any;
 
-    const res = await fetch(targetUrl, {
-      signal: controller.signal,
-    });
-    if (!res.ok) {
-      throw new Error(`Weather fetch failed with status: ${res.status}`);
+  // Retry with quick backoff; each attempt has its own timeout.
+  for (let attempt = 0; attempt < RETRY_DELAYS_MS.length; attempt++) {
+    if (RETRY_DELAYS_MS[attempt] > 0) {
+      await sleep(RETRY_DELAYS_MS[attempt]);
     }
 
-    return await res.json();
-  } catch (error) {
-    if ((error as any)?.name === "AbortError") {
-      throw new Error("Weather fetch timed out");
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), DEFAULT_API_TIMEOUT);
+
+    try {
+      console.log("Requesting Weather from URL:", targetUrl, { attempt });
+
+      const res = await fetch(targetUrl, {
+        signal: controller.signal,
+      });
+      if (!res.ok) {
+        throw new Error(`Weather fetch failed with status: ${res.status}`);
+      }
+
+      return await res.json();
+    } catch (error) {
+      lastError = error;
+      if ((error as any)?.name === "AbortError") {
+        console.warn("Weather fetch timed out", {
+          attempt,
+          lat,
+          lon,
+          targetUrl,
+        });
+      }
+      // continue retries
+    } finally {
+      clearTimeout(timeoutId);
     }
-    throw error;
-  } finally {
-    clearTimeout(timeoutId);
   }
+
+  if ((lastError as any)?.name === "AbortError") {
+    throw new Error("Weather fetch timed out");
+  }
+  throw lastError;
 }

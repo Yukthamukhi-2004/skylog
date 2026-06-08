@@ -78,7 +78,7 @@ export function useLocationSearch() {
         });
 
         setSuggestions(deduped);
-      } catch (e) {
+      } catch {
         setError("Could not fetch suggestions. Check your connection.");
         setSuggestions([]);
       } finally {

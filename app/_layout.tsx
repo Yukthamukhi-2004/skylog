@@ -1,11 +1,22 @@
 import { ClerkLoaded, ClerkProvider } from "@clerk/expo";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Slot } from "expo-router";
 import * as SecureStore from "expo-secure-store";
 import { ActivityIndicator, View } from "react-native";
-import { Provider } from "react-redux";
 import { PersistGate } from "redux-persist/integration/react";
+import { SavedLocationsProvider } from "../context/savedLocationsService";
 import "../global.css";
-import { persistor, store } from "../store/index";
+import { persistor } from "../store/index";
+
+// Initialize the global TanStack Query Client
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 2,
+      staleTime: 1000 * 60 * 5,
+    },
+  },
+});
 
 const tokenCache = {
   async getToken(key: string) {
@@ -38,7 +49,6 @@ if (!publishableKey) {
   throw new Error("Add your Clerk Publishable Key to the .env file");
 }
 
-// Shown while Redux is rehydrating persisted state from AsyncStorage
 function LoadingScreen() {
   return (
     <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
@@ -49,14 +59,16 @@ function LoadingScreen() {
 
 export default function RootLayout() {
   return (
-    <Provider store={store}>
+    <QueryClientProvider client={queryClient}>
       <PersistGate loading={<LoadingScreen />} persistor={persistor}>
         <ClerkProvider publishableKey={publishableKey} tokenCache={tokenCache}>
           <ClerkLoaded>
-            <Slot />
+            <SavedLocationsProvider>
+              <Slot />
+            </SavedLocationsProvider>
           </ClerkLoaded>
         </ClerkProvider>
       </PersistGate>
-    </Provider>
+    </QueryClientProvider>
   );
 }

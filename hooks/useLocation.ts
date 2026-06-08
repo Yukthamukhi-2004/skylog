@@ -26,7 +26,7 @@ export function useLocation() {
           latitude: currentLocation.coords.latitude,
           longitude: currentLocation.coords.longitude,
         });
-      } catch (error) {
+      } catch {
         setErrorMsg("Error fetching location data");
       } finally {
         setLoading(false);
